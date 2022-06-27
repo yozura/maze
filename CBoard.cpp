@@ -1,25 +1,30 @@
 #include "CBoard.h"
+#include "CPlayer.h"	
 
-CBoard::CBoard(int _size, MAZE_TYPE _mazeType)
+Board::Board(int _size, MAZE_TYPE _mazeType)
 	: m_size(_size)
 	, m_mazeType(_mazeType)
+	, RECT(L'■')
+	, m_player(nullptr)
 {
 	if (m_size % 2 == 0)
 		++m_size;
 
-	init();
+	m_destPos = new Pos(m_size - 2, m_size - 2);
+	Init();
 }
 
-CBoard::~CBoard()
+Board::~Board()
 {
+	delete m_destPos;
 }
 
-void CBoard::setColor(WORD _text)
+void Board::SetColor(WORD _text)
 {
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), _text);
 }
 
-void CBoard::setMaze(MAZE_TYPE _mazeType)
+void Board::ChangeMaze(MAZE_TYPE _mazeType)
 {
 	m_tiles.clear();
 	m_mazeType = _mazeType;
@@ -31,7 +36,7 @@ void CBoard::setMaze(MAZE_TYPE _mazeType)
 	}
 }
 
-void CBoard::GenerateByDefault()
+void Board::GenerateByDefault()
 {
 	for (int x = 0; x < m_size; ++x)
 	{
@@ -47,7 +52,7 @@ void CBoard::GenerateByDefault()
 	}
 }
 
-void CBoard::GenerateByBinaryTree()
+void Board::GenerateByBinaryTree()
 {
 	// 1. 길을 막는 작업
 	for (int x = 0; x < m_size; ++x)
@@ -98,8 +103,14 @@ void CBoard::GenerateByBinaryTree()
 	}
 }
 
-void CBoard::GenerateBySideWinder()
+void Board::GenerateBySideWinder()
 {
+	// 알고리즘 개요
+	// 1. (0, 0) 에서 시작하는 셀부터 행 방향으로 진행한다.
+	// 2. 현재 셀을 실행 세트에 추가한다.
+	// 3. 현재 셀의 경우 동쪽으로 갈건지 아닌지
+
+
 	// 1. 길을 막는 작업
 	for (int x = 0; x < m_size; ++x)
 	{
@@ -144,22 +155,22 @@ void CBoard::GenerateBySideWinder()
 
 			if (generator() == 0)
 			{
-				m_tiles[x][y + 1] = TILE_TYPE::EMPTY;
-				++count;
-			}
-			else
-			{
-				uniform_int_distribution<int> distribution(0, count);
+				uniform_int_distribution<int> distribution(0, count - 1);
 				auto countGenerator = std::bind(distribution, engine);
 				int rand = countGenerator();
 				m_tiles[x + 1][y - rand * 2] = TILE_TYPE::EMPTY;
 				count = 1;
 			}
+			else
+			{
+				m_tiles[x][y + 1] = TILE_TYPE::EMPTY;
+				++count;
+			}
 		}
 	}
 }
 
-void CBoard::init()
+void Board::Init()
 {
 	switch (m_mazeType)
 	{
@@ -169,32 +180,29 @@ void CBoard::init()
 	}
 }
 
-void CBoard::render()
+void Board::Render()
 {
 	// Mazes for Programmers
 	std::locale::global(std::locale("kor"));
-	const wchar_t CIRCLE = L'■';
 	for (int x = 0; x < m_size; ++x)
 	{
 		for (int y = 0; y < m_size; ++y)
 		{
-			if (m_tiles[x][y] == TILE_TYPE::WALL)
-			{
-				setColor(12);
-				std::wcout << CIRCLE;
-			}
+			if (m_player->GetPlayerPos().x == x && m_player->GetPlayerPos().y == y) SetColor(11);
+			else if (x == (*m_destPos).x && y == (*m_destPos).y) SetColor(14);
 			else
 			{
-				setColor(10);
-				std::wcout << CIRCLE;
+				if (m_tiles[x][y] == TILE_TYPE::WALL) SetColor(16);
+				else SetColor(17);
 			}
+			std::wcout << RECT;
 		}
-		setColor(15);
+		SetColor(15);
 		std::wcout << '\n';
 	}
 }
 
-void CBoard::reset()
+void Board::Reset()
 {
 	m_tiles.clear();
 	switch (m_mazeType)

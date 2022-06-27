@@ -1,31 +1,68 @@
 #include "define.h"
 #include "CBoard.h"
+#include "CPlayer.h"
+#include "CGraph.h"
+#include "CPriorityQueue.h"
 
 void set_cursor(bool visible);
+int maze();
 
 int main()
 {
-	CBoard board(25, MAZE_TYPE::SIDE_WINDER);
-	const int WAIT_TICK = 1000 / 30;
-	COORD pos = { 0, 0 };
+	int** matrix = new int* [6];
+	matrix[0] = new int[6]{ 0, 1, 0, 1, 0, 0 };
+	matrix[1] = new int[6]{ 1, 0, 1, 1, 0, 0 };
+	matrix[2] = new int[6]{ 0, 1, 0, 0, 0, 0 };
+	matrix[3] = new int[6]{ 1, 1, 0, 0, 1, 0 };
+	matrix[4] = new int[6]{ 0, 0, 0, 1, 0, 1 };
+	matrix[5] = new int[6]{ 0, 0, 0, 0, 1, 0 };
+
+	Graph<int> graph(6, 6);
+	graph.SetMatrix(matrix);
+
+	maze();
+	return 0;
+}
+
+int maze()
+{
+	// System
 	set_cursor(false);
-	int lastTick = 0;	
-	
-	mt19937 engine((unsigned int)time(NULL));				// 메르센 트위스터 난수 엔진
-	uniform_int_distribution<int> distribution(0, 1);		// 생성 범위
-	auto generator = std::bind(distribution, engine);
-	while (true) 
+	COORD pos = { 0, 0 };
+
+	// Player
+	Pos playerPos(1, 1);
+	Player player(playerPos);
+
+	// Board
+	Board board(25, MAZE_TYPE::SIDE_WINDER);
+
+	// Player Setting
+	player.SetBoard(&board);
+	player.SetSize(board.GetSize());
+	player.ChangePathFinder(PATH_FINDER::ASTAR);
+
+	// Board Setting
+	board.SetPlayer(&player);
+
+	const ULONGLONG WAIT_TICK = 1000 / 60;
+	ULONGLONG lastTick = 0;
+	while (true)
 	{
-		#pragma region Frame
-		int curTick = GetTickCount64();
+#pragma region Frame
+		ULONGLONG curTick = GetTickCount64();
 		if (curTick - lastTick < WAIT_TICK)
 			continue;
+		int deltaTick = curTick - lastTick;
 		lastTick = curTick;
-		#pragma endregion
+#pragma endregion
 
+		// Update
+		player.Update(deltaTick);
+
+		// Draw
 		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
-		board.render();
-		board.reset();
+		board.Render();
 	}
 	return 0;
 }
